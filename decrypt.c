@@ -5,8 +5,13 @@
 */
 
 #include <stdio.h>
+#ifndef _WIN32
 #include <unistd.h> 
+#else
+	#include <windows.h>
+#endif
 #include <string.h>
+
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/hmac.h>
@@ -30,36 +35,10 @@ const char *usage =
         ;
 const char *optstring = "hi:o:k:";
 
-int parse_args(int argc, char **argv, char **key, char **input, char **output) 
-{
-        int c;
-
-        while((c = getopt(argc, argv, optstring)) != -1) {
-                switch (c) {
-                case 'i':
-                        *input = optarg;
-                        break;
-                case 'o':
-                        *output = optarg;
-                        break;
-                case 'k':
-                        *key = optarg;
-                        break;
-                case 'h':
-                default:
-                        fputs(usage, stderr);
-                        return 0;
-                }
-        }
-
-        return 1;
-}
-
-
 int main(int argc, char **argv) {
-  char* infile = "sqlcipher.db";
-  char* outfile = "sqlite.db";
-  char *pass= "testkey";
+  char* infile = "EnMicroMsg.db";
+  char* outfile = "EnMicroMsg.decrypt.c.db";
+  char *pass= "936329a";
   int i, csz, tmp_csz, key_sz, iv_sz, block_sz, hmac_sz, reserve_sz;
   FILE *infh, *outfh;
   int read, written;
@@ -67,7 +46,7 @@ int main(int argc, char **argv) {
   EVP_CIPHER *evp_cipher;
   EVP_CIPHER_CTX ectx;
 
-  if (!parse_args(argc, argv, &pass, &infile, &outfile)) return 1;
+ // if (!parse_args(argc, argv, &pass, &infile, &outfile)) return 1;
 
   OpenSSL_add_all_algorithms();
 

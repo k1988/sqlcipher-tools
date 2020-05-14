@@ -1,0 +1,11 @@
+.vs 
+*.db
+*.msc
+bin/
+build_temp/
+*.log
+Debug
+Release
+*.user
+*.exe
+*.o
