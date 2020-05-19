@@ -18,7 +18,7 @@
 
 #define ERROR(X)  {printf("[ERROR] iteration %d: ", i); printf X;fflush(stdout);}
 #define PAGESIZE 1024
-#define PBKDF2_ITER 64000
+#define PBKDF2_ITER 4000
 #define FILE_HEADER_SZ 16
 
 const char *usage =
@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
   int read, written;
   unsigned char *inbuffer, *outbuffer, *salt, *out, *key, *iv;
   EVP_CIPHER *evp_cipher;
-  EVP_CIPHER_CTX ectx;
+  EVP_CIPHER_CTX* ectx = EVP_CIPHER_CTX_new();
 
  // if (!parse_args(argc, argv, &pass, &infile, &outfile)) return 1;
 
@@ -57,12 +57,21 @@ int main(int argc, char **argv) {
 
   iv_sz = EVP_CIPHER_iv_length(evp_cipher);
   iv = malloc(iv_sz);
- 
-  hmac_sz = EVP_MD_size(EVP_sha1());
 
   block_sz = EVP_CIPHER_block_size(evp_cipher);
 
-  reserve_sz = iv_sz + hmac_sz;
+// 微信使用的数据库不需要hmac
+  int useHmac = 0;
+  if (useHmac)
+  {
+	hmac_sz = EVP_MD_size(EVP_sha1());
+	reserve_sz = iv_sz + hmac_sz;
+  }
+  else
+  {
+	  reserve_sz = iv_sz;
+  }
+	
   reserve_sz = ((reserve_sz % block_sz) == 0) ? reserve_sz : ((reserve_sz / block_sz) + 1) * block_sz; 
                
   inbuffer = (unsigned char*) malloc(PAGESIZE);
@@ -85,6 +94,7 @@ int main(int argc, char **argv) {
   read = fread(inbuffer, 1, PAGESIZE, infh);  /* read the first page */
   memcpy(salt, inbuffer, FILE_HEADER_SZ); /* first 16 bytes are the random database salt */
 
+	
   PKCS5_PBKDF2_HMAC_SHA1(pass, strlen(pass), salt, FILE_HEADER_SZ, PBKDF2_ITER, key_sz, key);
  
   memset(outbuffer, 0, PAGESIZE);
@@ -92,15 +102,15 @@ int main(int argc, char **argv) {
 
   memcpy(iv, inbuffer + PAGESIZE - reserve_sz, iv_sz); /* last iv_sz bytes are the initialization vector */
  
-  EVP_CipherInit(&ectx, evp_cipher, NULL, NULL, 0);
-  EVP_CIPHER_CTX_set_padding(&ectx, 0);
-  EVP_CipherInit(&ectx, NULL, key, iv, 0);
-  EVP_CipherUpdate(&ectx, out, &tmp_csz, inbuffer + FILE_HEADER_SZ, PAGESIZE - reserve_sz - FILE_HEADER_SZ);
+  EVP_CipherInit(ectx, evp_cipher, NULL, NULL, 0);
+  EVP_CIPHER_CTX_set_padding(ectx, 0);
+  EVP_CipherInit(ectx, NULL, key, iv, 0);
+  EVP_CipherUpdate(ectx, out, &tmp_csz, inbuffer + FILE_HEADER_SZ, PAGESIZE - reserve_sz - FILE_HEADER_SZ);
   csz = tmp_csz;  
   out += tmp_csz;
-  EVP_CipherFinal(&ectx, out, &tmp_csz);
+  EVP_CipherFinal(ectx, out, &tmp_csz);
   csz += tmp_csz;
-  EVP_CIPHER_CTX_cleanup(&ectx);
+  EVP_CIPHER_CTX_cleanup(ectx);
 
   fwrite("SQLite format 3\0", 1, FILE_HEADER_SZ, outfh);
   fwrite(outbuffer, 1, PAGESIZE - FILE_HEADER_SZ, outfh);
@@ -112,15 +122,15 @@ int main(int argc, char **argv) {
     memset(outbuffer, 0, PAGESIZE);
     out = outbuffer;
  
-    EVP_CipherInit(&ectx, evp_cipher, NULL, NULL, 0);
-    EVP_CIPHER_CTX_set_padding(&ectx, 0);
-    EVP_CipherInit(&ectx, NULL, key, iv, 0);
-    EVP_CipherUpdate(&ectx, out, &tmp_csz, inbuffer, PAGESIZE - reserve_sz);
+    EVP_CipherInit(ectx, evp_cipher, NULL, NULL, 0);
+    EVP_CIPHER_CTX_set_padding(ectx, 0);
+    EVP_CipherInit(ectx, NULL, key, iv, 0);
+    EVP_CipherUpdate(ectx, out, &tmp_csz, inbuffer, PAGESIZE - reserve_sz);
     csz = tmp_csz;  
     out += tmp_csz;
-    EVP_CipherFinal(&ectx, out, &tmp_csz);
+    EVP_CipherFinal(ectx, out, &tmp_csz);
     csz += tmp_csz;
-    EVP_CIPHER_CTX_cleanup(&ectx);
+    EVP_CIPHER_CTX_cleanup(ectx);
 
     fwrite(outbuffer, 1, PAGESIZE, outfh);
     printf("wrote page %d\n", i);

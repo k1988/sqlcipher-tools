@@ -150,5 +150,4 @@ end_of_export:
 		ERROR(("error %d: %s\n", rc, sqlite3_errmsg(db)))
 	}
 	sqlite3_close(db);
-	exit(0);
 }
